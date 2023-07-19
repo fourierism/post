@@ -19,7 +19,7 @@ const (
 
 	MinBitsPerLabel = 1
 	MaxBitsPerLabel = 256
-	BitsPerLabel    = 8 * postrs.LabelLength
+	BitsPerLabel    = 8 * 16
 
 	KiB = 1024
 	MiB = 1024 * KiB
@@ -126,7 +126,7 @@ type InitOpts struct {
 	DataDir     string
 	NumUnits    uint32
 	MaxFileSize uint64
-	ProviderID  int
+	ProviderID  string
 	Throttle    bool
 	Scrypt      ScryptParams
 	// ComputeBatchSize must be greater than 0
@@ -177,7 +177,7 @@ func DefaultLabelParams() ScryptParams {
 
 // BestProviderID can be used for selecting the most performant provider
 // based on a short benchmarking session.
-const BestProviderID = -1
+const BestProviderID = ""
 
 // MainnetInitOpts returns the default InitOpts for mainnet.
 func MainnetInitOpts() InitOpts {

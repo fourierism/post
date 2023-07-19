@@ -7,21 +7,21 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"math"
-	"os"
-	"os/signal"
-	"path/filepath"
-
 	"github.com/davecgh/go-spew/spew"
-	"go.uber.org/zap"
-
 	"github.com/spacemeshos/post/config"
 	"github.com/spacemeshos/post/initialization"
 	"github.com/spacemeshos/post/internal/postrs"
 	"github.com/spacemeshos/post/proving"
 	"github.com/spacemeshos/post/shared"
 	"github.com/spacemeshos/post/verifying"
+	"go.uber.org/zap"
+	"log"
+	"math"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
 const edKeyFileName = "key.bin"
@@ -47,11 +47,11 @@ func parseFlags() {
 	flag.BoolVar(&genProof, "genproof", false, "generate proof as a sanity test, after initialization")
 	flag.StringVar(&opts.DataDir, "datadir", opts.DataDir, "filesystem datadir path")
 	flag.Uint64Var(&opts.MaxFileSize, "maxFileSize", opts.MaxFileSize, "max file size")
-	flag.IntVar(&opts.ProviderID, "provider", opts.ProviderID, "compute provider id (required)")
+	flag.StringVar(&opts.ProviderID, "provider", opts.ProviderID, "compute provider id (required), example: 0,1,2")
 	flag.Uint64Var(&cfg.LabelsPerUnit, "labelsPerUnit", cfg.LabelsPerUnit, "the number of labels per unit")
 	flag.BoolVar(&reset, "reset", false, "whether to reset the datadir before starting")
 	flag.StringVar(&idHex, "id", "", "miner's id (public key), in hex (will be auto-generated if not provided)")
-	flag.StringVar(&commitmentAtxIdHex, "commitmentAtxId", "", "commitment atx id, in hex (required)")
+	flag.StringVar(&commitmentAtxIdHex, "commitmentAtxId", "9eebff023abb17ccb775c602daade8ed708f0a50d3149a42801184f5b74f2865", "commitment atx id, in hex (required)")
 	numUnits := flag.Uint64("numUnits", uint64(opts.NumUnits), "number of units")
 
 	flag.IntVar(&opts.FromFileIdx, "fromFile", 0, "index of the first file to init (inclusive)")
@@ -68,7 +68,7 @@ func parseFlags() {
 }
 
 func processFlags() error {
-	if opts.ProviderID < 0 {
+	if opts.ProviderID == "" {
 		return errors.New("-provider flag is required")
 	}
 
@@ -98,6 +98,12 @@ func processFlags() error {
 }
 
 func main() {
+	log.Println(
+		"\n************************************************\n" +
+			"*      welcome to use spacemesh post tool      *\n" +
+			"*      this is a multi-threading version       *\n" +
+			"*    https://github.com/fourierism/post.git    *\n" +
+			"************************************************")
 	parseFlags()
 
 	if printProviders {
@@ -129,6 +135,44 @@ func main() {
 	if err != nil {
 		log.Fatalln("failed to initialize zap logger:", err)
 	}
+
+	providers, err := postrs.OpenCLProviders()
+	if err != nil {
+		log.Fatalln("failed to get OpenCL providers", err)
+	}
+	log.Println("providers: ", providers)
+
+	results := make(chan int, 100)
+	totalFiles := opts.TotalFiles(cfg.LabelsPerUnit)
+
+	ProviderIDs := strings.Split(opts.ProviderID, ",")
+	ProviderIDs_len := len(ProviderIDs)
+	each_Files := totalFiles / ProviderIDs_len
+
+	for w := 0; w < ProviderIDs_len; w++ {
+		opts.FromFileIdx = w * each_Files
+		if w == ProviderIDs_len-1 {
+			var i = totalFiles - 1
+			opts.ToFileIdx = &i
+
+		} else {
+			var i = (w+1)*each_Files - 1
+			opts.ToFileIdx = &i
+		}
+
+		opts.ProviderID = ProviderIDs[w]
+		log.Println("provider:", opts.ProviderID, "-> opts: ", opts)
+		go do(zapLog, opts, w, results)
+		time.Sleep(time.Second)
+	}
+
+	for a := 0; a < ProviderIDs_len; a++ {
+		<-results
+	}
+
+}
+
+func do(zapLog *zap.Logger, opts config.InitOpts, id_ int, results chan<- int) {
 
 	init, err := initialization.NewInitializer(
 		initialization.WithConfig(cfg),

@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -271,9 +272,9 @@ func (init *Initializer) Initialize(ctx context.Context) error {
 	numLabels := uint64(init.opts.NumUnits) * init.cfg.LabelsPerUnit
 	difficulty := init.powDifficultyFunc(numLabels)
 	batchSize := init.opts.ComputeBatchSize
-
+	u64, err := strconv.ParseUint(init.opts.ProviderID, 10, 32)
 	wo, err := oracle.New(
-		oracle.WithProviderID(uint(init.opts.ProviderID)),
+		oracle.WithProviderID((uint)(u64)),
 		oracle.WithCommitment(init.commitment),
 		oracle.WithVRFDifficulty(difficulty),
 		oracle.WithScryptParams(init.opts.Scrypt),

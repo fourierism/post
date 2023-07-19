@@ -1,24 +1,30 @@
-# PoST
+# postcli
 
-Spacemesh Proof of Space-Time (PoST) protocol implementation
+CLI tool for PoST initialization, this is a multi-threading version
 
-## Installing dependencies for PoSP
+# Getting it
 
-The Dependencies need to build the protocol can be installed using the following command:
-
-```bash
-make install
-```
-
-## Running tests
-
-To run the tests run the following command:
+Go to the https://github.com/fourierism/post/releases and take the most recent release for your platform. In case if you want to build it from source, follow the instructions below.
 
 ```bash
-make test
+git clone https://github.com/fourierism/post.git
+cd post
+make postcli
 ```
 
-## postcli
+# Usage
 
-To read more about `postcli` please refer to [postcli readme](cmd/postcli/README.md)
+```bash
+./postcli --help
+```
 
+###  Print the list of compute providers
+
+```bash
+./postcli -printProviders
+```
+
+###  Start with above providers id, raplace the xx in -id to your pubkey
+```bash
+./postcli  -datadir ./build/data  -numUnits 4 -provider="0,1" -id=xxx
+```
